@@ -1,4 +1,5 @@
 from database import get_connection
+from psycopg2.errors import UniqueViolation
 
 
 # CREATE
@@ -12,25 +13,31 @@ def create_customer(customer):
         RETURNING customer_id;
     """
 
-    cursor.execute(
-        query,
-        (
-            customer.name,
-            customer.email,
-            customer.phone,
-            customer.city,
-            customer.age
+    try:
+        cursor.execute(
+            query,
+            (
+                customer.name,
+                customer.email,
+                customer.phone,
+                customer.city,
+                customer.age
+            )
         )
-    )
 
-    customer_id = cursor.fetchone()[0]
+        customer_id = cursor.fetchone()[0]
 
-    connection.commit()
+        connection.commit()
 
-    cursor.close()
-    connection.close()
+        return customer_id
 
-    return customer_id
+    except UniqueViolation:
+        connection.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()
 
 
 # READ - All Customers
@@ -115,27 +122,32 @@ def update_customer(customer_id, customer):
         WHERE customer_id = %s;
     """
 
-    cursor.execute(
-        query,
-        (
-            customer.name,
-            customer.email,
-            customer.phone,
-            customer.city,
-            customer.age,
-            customer_id
+    try:
+        cursor.execute(
+            query,
+            (
+                customer.name,
+                customer.email,
+                customer.phone,
+                customer.city,
+                customer.age,
+                customer_id
+            )
         )
-    )
 
-    updated = cursor.rowcount > 0
+        updated = cursor.rowcount > 0
 
-    connection.commit()
+        connection.commit()
 
-    cursor.close()
-    connection.close()
+        return updated
 
-    return updated
+    except UniqueViolation:
+        connection.rollback()
+        raise
 
+    finally:
+        cursor.close()
+        connection.close()
 
 # DELETE
 def delete_customer(customer_id):
